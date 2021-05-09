@@ -2,13 +2,14 @@
 #define UTILITY_H
 
 #include <cmath>
+#include <random>
 #include <limits>
 #include <memory>
 
 // Usings
 
-using std::shared_ptr;
 using std::make_shared;
+using std::shared_ptr;
 using std::sqrt;
 
 // Constants
@@ -26,4 +27,19 @@ inline double degrees_to_radians(double degrees) {
 #include "ray.h"
 #include "vec3.h"
 
-#endif // UTILITY_H
+// Random number generation
+
+// Returns a random real number in [0, 1)
+inline double random_double() {
+    static std::uniform_real_distribution<double> distribuition(0.0, 1.0);
+    static std::mt19937 generator;
+
+    return distribuition(generator);
+}
+
+// Returns a random real number in [min,max)
+inline double random_double(double min, double max) {
+    return min + (max - min) * random_double();
+}
+
+#endif  // UTILITY_H
