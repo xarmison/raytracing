@@ -5,6 +5,7 @@
 #include <iostream>
 
 using std::sqrt;
+using std::fabs;
 
 class vec3 {
     public:
@@ -63,6 +64,13 @@ class vec3 {
 
         double length() const {
             return sqrt(length_squared());
+        }
+
+        // Return true if the vector is close to zero in all dimensions
+        bool near_zero() const {
+            const auto s = 1e-8;
+
+            return (fabs(vec[0]) < s) and (fabs(vec[1]) < s) and (fabs(vec[2]) < s);
         }
 
         inline static vec3 random() {
@@ -170,6 +178,10 @@ inline vec3 random_in_hemisphere(const vec3 &normal) {
         return in_unit_sphere;
     else
         return -in_unit_sphere;
+}
+
+inline vec3 reflect(const vec3 &v, const vec3 &n) {
+    return v - 2 * dot(v, n) * n;
 }
 
 #endif // VEC3_H
