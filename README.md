@@ -2,10 +2,6 @@
 
 Raytracing from scratch
 
-## Ray Tracing in One Weekend 
-
-Implementations of codes described in the book [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html) by [Peter Shirley](https://github.com/petershirley).
-
 ### Compiling
 
 To compile the project, open a terminal, go to the repository directory, and execute the following commands:
@@ -15,6 +11,11 @@ user@computer: ~/raytracing/ $ mkdir build && cd build
 user@computer: ~/raytracing/build $ cmake ../
 user@computer: ~/raytracing/build $ make
 ```
+
+## Ray Tracing in One Weekend 
+
+Implementations of codes described in the book [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html) by [Peter Shirley](https://github.com/petershirley).
+
 
 ### Running
 
@@ -30,8 +31,9 @@ Done Rendering!
 
 #### Other sample images
 
-![fuzzed_metal](./imgs/fuzzed_metal.png)
-![hollow_glass_sphere](./imgs/hollow_glass_sphere.png)
-![distant_view](./imgs/distant_view.png)
-![zooming_in](./imgs/zooming_in.png)
-![spheres_with_depth_of_field](./imgs/spheres_with_depth_of_field.png)
+![grid](./imgs/grid_1.png)
+
+
+## Ray Tracing: The Next Week 
+
+Implementations of codes described in the book [Ray Tracing: The Next Week](https://raytracing.github.io/books/RayTracingTheNextWeek.html) by [Peter Shirley](https://github.com/petershirley).
