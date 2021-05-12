@@ -43,6 +43,24 @@ class hittable_list : public hittable {
 
             return hit_anything;
         }
+
+        virtual bool bouding_box(double time_0, double time_1, aabb &output_box) const override {
+            if (objects.empty())
+                return false;
+            
+            aabb temp_box;
+            bool first_box = true;
+
+            for (const auto &object : objects) {
+                if (!object->bouding_box(time_0, time_1, temp_box))
+                    return false;
+
+                output_box = first_box ? temp_box : surrounding_box(output_box, temp_box);
+                first_box = false;
+            }
+
+            return true;
+        }
 };
 
 #endif // HITTABLE_LIST_H

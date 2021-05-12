@@ -1,7 +1,7 @@
 #ifndef MOVING_SPHERE_H
 #define MOVING_SPHERE_H
 
-#include "utility.h"
+#include "aabb.h"
 #include "hittable.h"
 
 class moving_sphere : public hittable {
@@ -66,6 +66,22 @@ class moving_sphere : public hittable {
 
         point3 center(double time) const {
             return center_0 + ((time - time_0) / (time_1 - time_0)) * (center_1 - center_0);
+        }
+
+        virtual bool bouding_box(double _time_0, double _time_1, aabb &output_box) const override {
+            aabb box_0(
+                center(_time_0) - vec3(radius, radius, radius),
+                center(_time_0) + vec3(radius, radius, radius)
+            );
+
+            aabb box_1(
+                center(_time_1) - vec3(radius, radius, radius),
+                center(_time_1) + vec3(radius, radius, radius)
+            );
+
+            output_box = surrounding_box(box_0, box_1);
+
+            return true;
         }
     
 };

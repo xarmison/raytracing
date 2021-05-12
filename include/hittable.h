@@ -1,7 +1,7 @@
 #ifndef HITTABLE_H
 #define HITTABLE_H
 
-#include "utility.h"
+#include "aabb.h"
 
 class material;
 
@@ -22,7 +22,7 @@ struct hit_record {
 class hittable {
     public:
         virtual bool hit(const ray &r, double t_min, double t_max, hit_record &rec) const = 0;
-    
+        virtual bool bouding_box(double time_0, double time_1, aabb &output_box) const = 0;
 };
 
 #endif // HITTABLE_H
