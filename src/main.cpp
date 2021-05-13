@@ -9,29 +9,28 @@
 #include "../include/sphere.h"
 #include "../include/material.h"
 #include "../include/moving_sphere.h"
+#include "../include/aarect.h"
+#include "../include/box.h"
 
-color ray_color(const ray &r, const hittable &world, int depth) {
+color ray_color(const ray &r, const color &background, const hittable &world, int depth) {
     hit_record rec;
 
     // The ray exceeded the bounce limit, no more light is gathered
     if (depth <= 0)
         return color(0.0, 0.0, 0.0);
 
-    if (world.hit(r, 0.001, infinity, rec)) {
-        ray scattered;
-        color attenuation;
+    // If the ray hits nothing, return the background color
+    if (!world.hit(r, 0.001, infinity, rec)) 
+        return background;
 
-        if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
-            return attenuation * ray_color(scattered, world, depth - 1);
+    ray scattered;
+    color attenuation;
+    color emitted = rec.mat_ptr->emitted(rec.u, rec.v, rec.p);
 
-        return color(0.0, 0.0, 0.0);
-    }
+    if (!rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+        return emitted;
 
-    vec3 unit_direction = unit_vector(r.direction());
-    
-    auto t = 0.5 * (unit_direction.y() + 1.0);
-
-    return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
+    return emitted + attenuation * ray_color(scattered, background, world, depth - 1);
 }
 
 hittable_list random_scene() {
@@ -158,6 +157,73 @@ hittable_list earth() {
     return hittable_list(globe);
 }
 
+hittable_list simple_light() {
+    hittable_list objects;
+
+    objects.add(make_shared<sphere>(
+        point3(0, -1000, 0),
+        1000,
+        make_shared<lambertian>(color(0.5, 0.5, 0.5))
+    ));
+
+    objects.add(make_shared<sphere>(
+        point3(0, 2, 0), 
+        2, 
+        make_shared<lambertian>(make_shared<noise_texture>(4))
+    ));
+
+    objects.add(make_shared<xy_rect>(
+        3, 5, 1, 3, -2,
+        make_shared<diffuse_light>(color(4.0, 4.0, 4.0))
+    ));
+
+    objects.add(make_shared<sphere>(
+        point3(0, 7, 0),
+        2,
+        make_shared<diffuse_light>(color(4.0, 4.0, 4.0))
+    ));
+
+    return objects;
+}
+
+hittable_list cornell_box() {
+    hittable_list objects;
+
+    auto red   = make_shared<lambertian>(color(0.65, 0.05, 0.05));
+    auto white = make_shared<lambertian>(color(0.73, 0.73, 0.73));
+    auto green = make_shared<lambertian>(color(0.12, 0.45, 0.15));
+    auto light = make_shared<diffuse_light>(color(15, 15, 15));
+
+    objects.add(make_shared<yz_rect>(0, 555, 0, 555, 555, green));
+    objects.add(make_shared<yz_rect>(0, 555, 0, 555, 0, red));
+
+    objects.add(make_shared<xz_rect>(213, 343, 227, 332, 554, light));
+
+    objects.add(make_shared<xz_rect>(0, 555, 0, 555, 0, white));
+    objects.add(make_shared<xz_rect>(0, 555, 0, 555, 555, white));
+    objects.add(make_shared<xy_rect>(0, 555, 0, 555, 555, white));
+
+    shared_ptr<hittable> box_1 = make_shared<box>(
+        point3(0.0, 0.0, 0.0),
+        point3(165, 330, 165),
+        white
+    );
+    box_1 = make_shared<rotate_y>(box_1, 15);
+    box_1 = make_shared<translate>(box_1, vec3(265, 0, 295));
+    objects.add(box_1);
+
+    shared_ptr<hittable> box_2 = make_shared<box>(
+        point3(0.0, 0.0, 0.0),
+        point3(165, 165, 165),
+        white
+    );
+    box_2 = make_shared<rotate_y>(box_2, -18);
+    box_2 = make_shared<translate>(box_2, vec3(130, 0, 65));
+    objects.add(box_2);
+
+    return objects;
+}
+
 int main(int argc, char* argv[]) {
 
     if (argc < 2) {
@@ -179,6 +245,7 @@ int main(int argc, char* argv[]) {
     point3 lookat;
     auto vfov = 40.0;
     auto aperture = 0.0;
+    auto background = color(0.0, 0.0, 0.0);
 
     int scene_id = atoi(argv[1]);
     switch (scene_id) {
@@ -186,8 +253,9 @@ int main(int argc, char* argv[]) {
             std::cerr << "Rendering scene 1\n";
             
             world = random_scene();
-            lookfrom = point3(13,2,3);
-            lookat = point3(0,0,0);
+            background = color(0.70, 0.80, 1.00);
+            lookfrom = point3(13, 2, 3);
+            lookat = point3(0, 0, 0);
             vfov = 20.0;
             aperture = 0.1;
 
@@ -197,8 +265,9 @@ int main(int argc, char* argv[]) {
             std::cerr << "Rendering scene 2\n";
 
             world = two_spheres();
-            lookfrom = point3(13,2,3);
-            lookat = point3(0,0,0);
+            background = color(0.70, 0.80, 1.00);
+            lookfrom = point3(13, 2, 3);
+            lookat = point3(0, 0, 0);
             vfov = 20.0;
 
             break;
@@ -207,6 +276,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Rendering scene 3\n";
 
             world = two_perlin_spheres();
+            background = color(0.70, 0.80, 1.00);
             lookfrom = point3(13, 2, 3);
             lookat = point3(0, 0, 0);
             vfov = 20.0;
@@ -217,10 +287,33 @@ int main(int argc, char* argv[]) {
             std::cerr << "Rendering scene 4\n";
             
             world = earth();
+            background = color(0.70, 0.80, 1.00);
             lookfrom = point3(13, 2, 3);
             lookat = point3(0, 0, 0);
             vfov = 20.0;
 
+            break;
+        
+        case 5:
+            std::cerr << "Rendering scene 5\n";
+
+            world = simple_light();
+            background = color(0.0, 0.0, 0.0);
+            lookfrom = point3(26.0, 3.0, 6.0);
+            lookat = point3(0.0, 2.0, 0.0);
+            vfov = 20.0;
+
+            break;
+
+        case 6:
+            std::cerr << "Rendering scene 6\n";
+            
+            world = cornell_box();
+            background = color(0.0, 0.0, 0.0);
+            lookfrom = point3(278, 278, -800);
+            lookat = point3(278, 278, 0);
+            vfov = 40.0;
+            
             break;
 
         default:
@@ -260,7 +353,7 @@ int main(int argc, char* argv[]) {
                 
                 ray r = cam.get_ray(u, v);
 
-                pixel_color += ray_color(r, world, max_depth);
+                pixel_color += ray_color(r, background, world, max_depth);
             }
 
             write_color(std::cout, pixel_color, samples_per_pixel);
