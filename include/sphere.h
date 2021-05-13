@@ -70,7 +70,7 @@ class sphere : public hittable {
             return true;
         }
 
-        virtual bool bouding_box(double time_0, double time_1, aabb &output_box) const override {
+        virtual bool bounding_box(double time_0, double time_1, aabb &output_box) const override {
             output_box = aabb(
                 center - vec3(radius, radius, radius),
                 center + vec3(radius, radius, radius)

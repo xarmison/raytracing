@@ -44,7 +44,7 @@ class hittable_list : public hittable {
             return hit_anything;
         }
 
-        virtual bool bouding_box(double time_0, double time_1, aabb &output_box) const override {
+        virtual bool bounding_box(double time_0, double time_1, aabb &output_box) const override {
             if (objects.empty())
                 return false;
             
@@ -52,7 +52,7 @@ class hittable_list : public hittable {
             bool first_box = true;
 
             for (const auto &object : objects) {
-                if (!object->bouding_box(time_0, time_1, temp_box))
+                if (!object->bounding_box(time_0, time_1, temp_box))
                     return false;
 
                 output_box = first_box ? temp_box : surrounding_box(output_box, temp_box);

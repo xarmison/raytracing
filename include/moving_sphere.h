@@ -68,7 +68,7 @@ class moving_sphere : public hittable {
             return center_0 + ((time - time_0) / (time_1 - time_0)) * (center_1 - center_0);
         }
 
-        virtual bool bouding_box(double _time_0, double _time_1, aabb &output_box) const override {
+        virtual bool bounding_box(double _time_0, double _time_1, aabb &output_box) const override {
             aabb box_0(
                 center(_time_0) - vec3(radius, radius, radius),
                 center(_time_0) + vec3(radius, radius, radius)
