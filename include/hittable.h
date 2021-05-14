@@ -99,9 +99,7 @@ class rotate_y : public hittable {
                     }
                 }
             }
-                    } 
-            }
-
+                     
             bbox = aabb(min, max);
         }
 
