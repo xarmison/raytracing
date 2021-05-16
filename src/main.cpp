@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "../include/utility.h"
+#include "../include/timer.h"
 
 #include "../include/camera.h"
 #include "../include/color.h"
@@ -14,7 +15,7 @@
 #include "../include/constant_medium.h"
 #include "../include/bvh.h"
 
-color ray_color(const ray &r, const color &background, const hittable &world, int depth) {
+color ray_color(const ray &r, const color &background, const hittable &world, const shared_ptr<hittable>& lights, int depth) {
     hit_record rec;
 
     // The ray exceeded the bounce limit, no more light is gathered
@@ -25,14 +26,25 @@ color ray_color(const ray &r, const color &background, const hittable &world, in
     if (!world.hit(r, 0.001, infinity, rec)) 
         return background;
 
-    ray scattered;
-    color attenuation;
-    color emitted = rec.mat_ptr->emitted(rec.u, rec.v, rec.p);
-
-    if (!rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+    scatter_record srec;
+    color emitted = rec.mat_ptr->emitted(r, rec, rec.u, rec.v, rec.p);
+    if (!rec.mat_ptr->scatter(r, rec, srec))
         return emitted;
 
-    return emitted + attenuation * ray_color(scattered, background, world, depth - 1);
+    if (srec.is_specular) {
+        return srec.attenuation
+            * ray_color(srec.specular_ray, background, world, lights, depth - 1);
+    }
+
+    auto light_ptr = make_shared<hittable_pdf>(lights, rec.p);
+    mixture_pdf p(light_ptr, srec.pdf_ptr);
+
+    ray scattered = ray(rec.p, p.generate(), r.time());
+    auto pdf_val = p.value(scattered.direction());
+
+    return emitted + srec.attenuation 
+        * rec.mat_ptr->scattering_pdf(r, rec, scattered)
+        * ray_color(scattered, background, world, lights, depth - 1) / pdf_val;
 }
 
 hittable_list random_scene() {
@@ -386,12 +398,16 @@ int main(int argc, char* argv[]) {
 
     // Image
     auto aspect_ratio = 16.0 / 9.0;
-    int im_width  = 1080;
+    int im_width  = 400;
     int samples_per_pixel = 100;
     int max_depth = 50;
 
     // World
     hittable_list world;
+
+    auto lights = make_shared<hittable_list>();
+    lights->add(make_shared<xz_rect>(213, 343, 227, 332, 554, shared_ptr<material>()));
+    lights->add(make_shared<sphere>(point3(190, 90, 190), 90, shared_ptr<material>()));
 
     point3 lookfrom;
     point3 lookat;
@@ -464,7 +480,7 @@ int main(int argc, char* argv[]) {
 
             aspect_ratio = 1.0;
             im_width = 600;
-            samples_per_pixel = 200;
+            samples_per_pixel = 100;
 
             background = color(0.0, 0.0, 0.0);
             lookfrom = point3(278, 278, -800);
@@ -496,7 +512,7 @@ int main(int argc, char* argv[]) {
 
             aspect_ratio = 1.0;
             im_width = 800;
-            samples_per_pixel = 10000;
+            samples_per_pixel = 1000;
 
             background = color(0.0, 0.0, 0.0);
             lookfrom = point3(478, 278, -600);
@@ -511,7 +527,7 @@ int main(int argc, char* argv[]) {
             break;
     }
 
-    int im_height = static_cast<int>(im_width / aspect_ratio);
+    int im_height = static_cast<int>(im_width / aspect_ratio);    
 
     // Camera
     vec3 vup(0, 1, 0);
@@ -529,10 +545,8 @@ int main(int argc, char* argv[]) {
 
     std::cerr.precision(3);
     for (int j = im_height - 1; j >= 0; j--) {
-        std::cerr << "Scanlines reamaining: " << std::setw(3) << j  
-            << " of " << im_height 
-            << " - " << std::setw(5) <<  static_cast<double>(im_height - j) / im_height * 100 << "%" 
-        << '\r';
+        
+        auto start = std::chrono::high_resolution_clock::now();
 
         for (int i = 0; i < im_width; i++) {
             
@@ -544,11 +558,20 @@ int main(int argc, char* argv[]) {
                 
                 ray r = cam.get_ray(u, v);
 
-                pixel_color += ray_color(r, background, world, max_depth);
+                pixel_color += ray_color(r, background, world, lights, max_depth);
             }
 
             write_color(std::cout, pixel_color, samples_per_pixel);
         }
+
+        auto end = std::chrono::high_resolution_clock::now();
+    
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        
+        std::cerr << "Scanlines reamaining: " << std::setw(3) << j  
+            << " of " << im_height 
+            << " - " << std::setw(6) <<  static_cast<double>(im_height - j) / im_height * 100 << "%" 
+        << " - ETA: "  << time_remaining(elapsed, j) << '\r';
     }
 
     std::cerr << "\nRendereing Done!\n";
