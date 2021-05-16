@@ -23,7 +23,7 @@ The program will render a scene with randomly positioned spheres in a fairly hig
 
 ```bash
 user@computer: ~/raytracing/build $ ./main > image.ppm
-Scanlines reamaining:   0 of 800 -  100%
+Scanlines reamaining:   0 of 800 -  100% - ETA 0s
 Done Rendering!
 ```
 
@@ -36,4 +36,14 @@ Done Rendering!
 
 ## Ray Tracing: The Next Week 
 
-Implementations of codes described in the book [Ray Tracing: The Next Week](https://raytracing.github.io/books/RayTracingTheNextWeek.html) by [Peter Shirley](https://github.com/petershirley).
+Improvements of the previuos codes described in the book [Ray Tracing: The Next Week](https://raytracing.github.io/books/RayTracingTheNextWeek.html) by [Peter Shirley](https://github.com/petershirley).
+
+## Rendering samples
+
+![grid_2](./imgs/grid_2.png)
+
+## Ray Tracing: The Rest of Your Life
+
+Improvements of the previuos codes described in the book [Ray Tracing: The Rest of Your Life](https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html) by [Peter Shirley](https://github.com/petershirley).
+
+![grid_3](./imgs/grid_3.png)
