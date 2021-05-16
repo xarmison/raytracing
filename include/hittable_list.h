@@ -61,6 +61,22 @@ class hittable_list : public hittable {
 
             return true;
         }
+
+        double pdf_value(const point3& o, const vec3& v) const {
+            auto weight = 1.0/objects.size();
+            auto sum = 0.0;
+
+            for (const auto& object : objects)
+                sum += weight * object->pdf_value(o, v);
+
+            return sum;
+        }
+
+        vec3 random(const vec3& o) const {
+            auto int_size = static_cast<int>(objects.size());
+
+            return objects[random_int(0, int_size - 1)]->random(o);
+        }
 };
 
 #endif // HITTABLE_LIST_H

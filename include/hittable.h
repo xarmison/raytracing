@@ -25,6 +25,14 @@ class hittable {
     public:
         virtual bool hit(const ray &r, double t_min, double t_max, hit_record &rec) const = 0;
         virtual bool bounding_box(double time_0, double time_1, aabb &output_box) const = 0;
+
+        virtual double pdf_value(const point3& o, const vec3& v) const {
+            return 0.0;
+        }
+
+        virtual vec3 random(const vec3& o) const {
+            return vec3(1.0, 0.0, 0.0);
+        }
 };
 
 class translate : public hittable {
@@ -140,5 +148,26 @@ class rotate_y : public hittable {
         }
 
 };
+
+class flip_face : public hittable {
+    public:
+        shared_ptr<hittable> ptr;
+
+    public:
+        flip_face(shared_ptr<hittable> p) : ptr(p) {}
+
+        virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const override {
+
+            if (!ptr->hit(r, t_min, t_max, rec))
+                return false;
+
+            rec.front_face = !rec.front_face;
+            return true;
+        }
+
+        virtual bool bounding_box(double time0, double time1, aabb& output_box) const override {
+            return ptr->bounding_box(time0, time1, output_box);
+        }       
+};  
 
 #endif // HITTABLE_H
