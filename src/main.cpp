@@ -457,7 +457,7 @@ int main(int argc, char* argv[]) {
     // Stores the rednered image 
     std::vector<std::vector<std::string>> image(im_height, std::vector<std::string>(im_width));
 
-    #pragma omp parallel for num_threads(7) 
+    #pragma omp parallel for num_threads(8) 
     for (int j = im_height - 1; j >= 0; j--) {
         #pragma omp atomic
         ++steps_completed;
