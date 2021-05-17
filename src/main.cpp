@@ -1,5 +1,8 @@
 #include <iomanip>
 #include <iostream>
+#include <omp.h>
+#include <string>
+#include <vector>
 
 #include "../include/utility.h"
 #include "../include/timer.h"
@@ -171,69 +174,31 @@ hittable_list earth() {
     return hittable_list(globe);
 }
 
-hittable_list simple_light() {
-    hittable_list objects;
-
-    objects.add(make_shared<sphere>(
-        point3(0, -1000, 0),
-        1000,
-        make_shared<lambertian>(color(0.5, 0.5, 0.5))
-    ));
-
-    objects.add(make_shared<sphere>(
-        point3(0, 2, 0), 
-        2, 
-        make_shared<lambertian>(make_shared<noise_texture>(4))
-    ));
-
-    objects.add(make_shared<xy_rect>(
-        3, 5, 1, 3, -2,
-        make_shared<diffuse_light>(color(4.0, 4.0, 4.0))
-    ));
-
-    objects.add(make_shared<sphere>(
-        point3(0, 7, 0),
-        2,
-        make_shared<diffuse_light>(color(4.0, 4.0, 4.0))
-    ));
-
-    return objects;
-}
-
 hittable_list cornell_box() {
     hittable_list objects;
 
-    auto red   = make_shared<lambertian>(color(0.65, 0.05, 0.05));
-    auto white = make_shared<lambertian>(color(0.73, 0.73, 0.73));
-    auto green = make_shared<lambertian>(color(0.12, 0.45, 0.15));
+    auto red   = make_shared<lambertian>(color(.65, .05, .05));
+    auto white = make_shared<lambertian>(color(.73, .73, .73));
+    auto green = make_shared<lambertian>(color(.12, .45, .15));
     auto light = make_shared<diffuse_light>(color(15, 15, 15));
 
     objects.add(make_shared<yz_rect>(0, 555, 0, 555, 555, green));
     objects.add(make_shared<yz_rect>(0, 555, 0, 555, 0, red));
 
-    objects.add(make_shared<xz_rect>(213, 343, 227, 332, 554, light));
-
-    objects.add(make_shared<xz_rect>(0, 555, 0, 555, 0, white));
+    objects.add(make_shared<flip_face>(make_shared<xz_rect>(213, 343, 227, 332, 554, light)));
+    
     objects.add(make_shared<xz_rect>(0, 555, 0, 555, 555, white));
+    objects.add(make_shared<xz_rect>(0, 555, 0, 555, 0, white));
     objects.add(make_shared<xy_rect>(0, 555, 0, 555, 555, white));
 
-    shared_ptr<hittable> box_1 = make_shared<box>(
-        point3(0.0, 0.0, 0.0),
-        point3(165, 330, 165),
-        white
-    );
-    box_1 = make_shared<rotate_y>(box_1, 15);
-    box_1 = make_shared<translate>(box_1, vec3(265, 0, 295));
-    objects.add(box_1);
+    shared_ptr<material> aluminum = make_shared<metal>(color(0.8, 0.85, 0.88), 0.0);
+    shared_ptr<hittable> box1 = make_shared<box>(point3(0,0,0), point3(165,330,165), aluminum);
+    box1 = make_shared<rotate_y>(box1, 15);
+    box1 = make_shared<translate>(box1, vec3(265,0,295));
+    objects.add(box1);
 
-    shared_ptr<hittable> box_2 = make_shared<box>(
-        point3(0.0, 0.0, 0.0),
-        point3(165, 165, 165),
-        white
-    );
-    box_2 = make_shared<rotate_y>(box_2, -18);
-    box_2 = make_shared<translate>(box_2, vec3(130, 0, 65));
-    objects.add(box_2);
+    auto glass = make_shared<dielectric>(1.5);
+    objects.add(make_shared<sphere>(point3(190,90,190), 90 , glass));
 
     return objects;
 }
@@ -248,7 +213,9 @@ hittable_list cornell_box_smoke() {
 
     objects.add(make_shared<yz_rect>(0, 555, 0, 555, 555, green));
     objects.add(make_shared<yz_rect>(0, 555, 0, 555, 0, red));
-    objects.add(make_shared<xz_rect>(113, 443, 127, 432, 554, light));
+
+    objects.add(make_shared<flip_face>(make_shared<xz_rect>(213, 343, 227, 332, 554, light)));
+    
     objects.add(make_shared<xz_rect>(0, 555, 0, 555, 555, white));
     objects.add(make_shared<xz_rect>(0, 555, 0, 555, 0, white));
     objects.add(make_shared<xy_rect>(0, 555, 0, 555, 555, white));
@@ -274,117 +241,59 @@ hittable_list final_scene() {
     const int boxes_per_side = 20;
     for (int i = 0; i < boxes_per_side; i++) {
         for (int j = 0; j < boxes_per_side; j++) {
-            auto w  = 100.0;
-            
+            auto w = 100.0;
             auto x0 = -1000.0 + i*w;
             auto z0 = -1000.0 + j*w;
             auto y0 = 0.0;
-
             auto x1 = x0 + w;
             auto y1 = random_double(1,101);
             auto z1 = z0 + w;
 
-            boxes1.add(make_shared<box>(
-                point3(x0, y0, z0),
-                point3(x1, y1, z1),
-                ground
-            ));
+            boxes1.add(make_shared<box>(point3(x0,y0,z0), point3(x1,y1,z1), ground));
         }
     }
-
 
     hittable_list objects;
 
     objects.add(make_shared<bvh_node>(boxes1, 0, 1));
 
-    // Light
-    objects.add(make_shared<xz_rect>(
-        123, 423, 147, 412, 554, 
-        make_shared<diffuse_light>(color(7, 7, 7))
-    ));
+    auto light = make_shared<diffuse_light>(color(7, 7, 7));
+    objects.add(make_shared<flip_face>(make_shared<xz_rect>(123, 423, 147, 412, 554, light)));
 
-    // Moving sphere
     auto center1 = point3(400, 400, 200);
-    auto center2 = center1 + vec3(30, 0, 0);
-    objects.add(make_shared<moving_sphere>(
-        center1, center2, 
-        0, 1, 50, 
-        make_shared<lambertian>(color(0.7, 0.3, 0.1))
-    ));
+    auto center2 = center1 + vec3(30,0,0);
+    auto moving_sphere_material = make_shared<lambertian>(color(0.7, 0.3, 0.1));
+    objects.add(make_shared<moving_sphere>(center1, center2, 0, 1, 50, moving_sphere_material));
 
-    // Glass sphere
+    objects.add(make_shared<sphere>(point3(260, 150, 45), 50, make_shared<dielectric>(1.5)));
     objects.add(make_shared<sphere>(
-        point3(260, 150, 45), 
-        50, 
-        make_shared<dielectric>(1.5)
+        point3(0, 150, 145), 50, make_shared<metal>(color(0.8, 0.8, 0.9), 1.0)
     ));
 
-    // Metal sphere
-    objects.add(make_shared<sphere>(
-        point3(0, 150, 145), 
-        50, 
-        make_shared<metal>(color(0.8, 0.8, 0.9), 1.0)
-    ));
-
-    //Fog
-    auto boundary = make_shared<sphere>(
-        point3(360,150,145), 
-        70, 
-        make_shared<dielectric>(1.5)
-    );
+    auto boundary = make_shared<sphere>(point3(360,150,145), 70, make_shared<dielectric>(1.5));
     objects.add(boundary);
-    objects.add(make_shared<constant_medium>(
-        boundary, 
-        0.2, 
-        color(0.2, 0.4, 0.9)
-    ));
-    boundary = make_shared<sphere>(
-        point3(0, 0, 0), 
-        5000, 
-        make_shared<dielectric>(1.5)
-    );
-    objects.add(make_shared<constant_medium>(
-        boundary, 
-        .0001, 
-        color(1,1,1)
-    ));
+    objects.add(make_shared<constant_medium>(boundary, 0.2, color(0.2, 0.4, 0.9)));
+    boundary = make_shared<sphere>(point3(0,0,0), 5000, make_shared<dielectric>(1.5));
+    objects.add(make_shared<constant_medium>(boundary, .0001, color(1,1,1)));
 
-    // Earth
-    objects.add(make_shared<sphere>(
-        point3(400, 200, 400),
-        100,
-        make_shared<lambertian>(make_shared<image_texture>("../textures/earthmap.jpg"))
-    ));
+    auto emat = make_shared<lambertian>(make_shared<image_texture>("../textures/earthmap.jpg"));
+    objects.add(make_shared<sphere>(point3(400,200,400), 100, emat));
+    auto pertext = make_shared<noise_texture>(0.1);
+    objects.add(make_shared<sphere>(point3(220,280,300), 80, make_shared<lambertian>(pertext)));
 
-    // Noise texture
-    objects.add(make_shared<sphere>(
-        point3(220, 280, 300),
-        80,
-        make_shared<lambertian>(
-            make_shared<noise_texture>(0.1)
-        )
-    ));
-
-    // Cube with random spheres
     hittable_list boxes2;
     auto white = make_shared<lambertian>(color(.73, .73, .73));
     int ns = 1000;
-
     for (int j = 0; j < ns; j++) {
-        boxes2.add(make_shared<sphere>(
-            point3::random(0, 165), 
-            10,
-            white
-        ));
+        boxes2.add(make_shared<sphere>(point3::random(0,165), 10, white));
     }
 
     objects.add(make_shared<translate>(
         make_shared<rotate_y>(
-            make_shared<bvh_node>(boxes2, 0.0, 1.0), 
-            15
-        ),
-        vec3(-100, 270, 395)
-    ));
+            make_shared<bvh_node>(boxes2, 0.0, 1.0), 15),
+            vec3(-100,270,395)
+        )
+    );
 
     return objects;
 }
@@ -418,9 +327,10 @@ int main(int argc, char* argv[]) {
     int scene_id = atoi(argv[1]);
     switch (scene_id) {
         case 1:
-            std::cerr << "Rendering scene 1\n";
+            std::cerr << "Rendering random spheres scene\n";
             
             world = random_scene();
+
             background = color(0.70, 0.80, 1.00);
             lookfrom = point3(13, 2, 3);
             lookat = point3(0, 0, 0);
@@ -430,9 +340,10 @@ int main(int argc, char* argv[]) {
             break;
         
         case 2:
-            std::cerr << "Rendering scene 2\n";
+            std::cerr << "Rendering two spheres scene\n";
 
             world = two_spheres();
+
             background = color(0.70, 0.80, 1.00);
             lookfrom = point3(13, 2, 3);
             lookat = point3(0, 0, 0);
@@ -441,9 +352,10 @@ int main(int argc, char* argv[]) {
             break;
 
         case 3:
-            std::cerr << "Rendering scene 3\n";
+            std::cerr << "Rendering scene with two perlin noise textures spheres\n";
 
             world = two_perlin_spheres();
+
             background = color(0.70, 0.80, 1.00);
             lookfrom = point3(13, 2, 3);
             lookat = point3(0, 0, 0);
@@ -452,29 +364,19 @@ int main(int argc, char* argv[]) {
             break;
 
         case 4:
-            std::cerr << "Rendering scene 4\n";
+            std::cerr << "Rendering earth scene\n";
             
             world = earth();
+
             background = color(0.70, 0.80, 1.00);
             lookfrom = point3(13, 2, 3);
             lookat = point3(0, 0, 0);
             vfov = 20.0;
 
             break;
-        
+
         case 5:
-            std::cerr << "Rendering scene 5\n";
-
-            world = simple_light();
-            background = color(0.0, 0.0, 0.0);
-            lookfrom = point3(26.0, 3.0, 6.0);
-            lookat = point3(0.0, 2.0, 0.0);
-            vfov = 20.0;
-
-            break;
-
-        case 6:
-            std::cerr << "Rendering scene 6\n";
+            std::cerr << "Rendering cornell box scene\n";
             
             world = cornell_box();
 
@@ -489,8 +391,8 @@ int main(int argc, char* argv[]) {
             
             break;
 
-        case 7:
-            std::cerr << "Rendering scene 7\n";
+        case 6:
+            std::cerr << "Rendering cornell box with smoke objects\n";
             
             world = cornell_box_smoke();
 
@@ -505,14 +407,19 @@ int main(int argc, char* argv[]) {
             
             break;
 
-        case 8:
-            std::cerr << "Rendering scene 8\n";
+        case 7:
+            std::cerr << "Rendering final scene\n";
 
             world = final_scene();
 
+            lights->add(make_shared<xz_rect>(
+                123, 423, 147, 412, 554, 
+                make_shared<diffuse_light>(color(7, 7, 7))
+            ));
+
             aspect_ratio = 1.0;
-            im_width = 800;
-            samples_per_pixel = 1000;
+            im_width = 1000;
+            samples_per_pixel = 100;
 
             background = color(0.0, 0.0, 0.0);
             lookfrom = point3(478, 278, -600);
@@ -543,11 +450,24 @@ int main(int argc, char* argv[]) {
     // Render
     std::cout << "P3\n" << im_width << " " << im_height << "\n255\n";
 
-    std::cerr.precision(3);
-    for (int j = im_height - 1; j >= 0; j--) {
-        
-        auto start = std::chrono::high_resolution_clock::now();
+    // Show progress controls
+    auto total_steps = im_height;
+    size_t steps_completed = 0;
 
+    // Stores the rednered image 
+    std::vector<std::vector<std::string>> image(im_height, std::vector<std::string>(im_width));
+
+    #pragma omp parallel for num_threads(7) 
+    for (int j = im_height - 1; j >= 0; j--) {
+        #pragma omp atomic
+        ++steps_completed;
+
+        #pragma omp critical
+        std::cerr << "Scanlines done: " << std::setw(3) << steps_completed  
+            << " of " << total_steps 
+            << " - " << std::setw(6) << std::setprecision(3) << 100.0 * steps_completed / total_steps << "%" 
+        << '\r';   
+                
         for (int i = 0; i < im_width; i++) {
             
             color pixel_color(0, 0, 0);
@@ -555,26 +475,26 @@ int main(int argc, char* argv[]) {
             for (int s = 0; s < samples_per_pixel; s++) {
                 auto u = double(i + random_double()) / (im_width - 1);
                 auto v = double(j + random_double()) / (im_height - 1);
+
                 
                 ray r = cam.get_ray(u, v);
 
                 pixel_color += ray_color(r, background, world, lights, max_depth);
             }
 
-            write_color(std::cout, pixel_color, samples_per_pixel);
-        }
-
-        auto end = std::chrono::high_resolution_clock::now();
-    
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        
-        std::cerr << "Scanlines reamaining: " << std::setw(3) << j  
-            << " of " << im_height 
-            << " - " << std::setw(6) <<  static_cast<double>(im_height - j) / im_height * 100 << "%" 
-        << " - ETA: "  << time_remaining(elapsed, j) << '\r';
+            #pragma omp critical
+            image[im_height - (j + 1)][i] = get_color(pixel_color, samples_per_pixel);
+        }   
     }
 
     std::cerr << "\nRendereing Done!\n";
 
+    for(int row = 0; row < image.size(); row++) 
+        for (int col = 0; col < image[row].size(); col++) 
+            std::cout << image[row][col] << '\n';
+
+    std::cerr << "Done!\n";
+
+    
     return 0;
 }
